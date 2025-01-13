@@ -1,0 +1,269 @@
+﻿<UserControl x:Class="ToolTemp.WPF.MVVM.View.SettingView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             mc:Ignorable="d" Width="550" Height="506">
+    <Grid Margin="0,0,0,-56">
+        <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="220"/>
+            <ColumnDefinition />
+        </Grid.ColumnDefinitions>
+        <Border Grid.Column="0" 
+     BorderThickness="0 0 1 0" 
+     BorderBrush="Gray" Grid.ColumnSpan="2">
+            <Grid Margin="0,0,-1,45">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="100"/>
+                    <ColumnDefinition Width="120"/>
+                </Grid.ColumnDefinitions>
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="40"/>
+                    <RowDefinition Height="40"/>
+                    <RowDefinition Height="40"/>
+                    <RowDefinition Height="40"/>
+                    <RowDefinition Height="40"/>
+                    <RowDefinition Height="40"/>
+                    <RowDefinition Height="40"/>
+                    <RowDefinition Height="40"/>
+                    <RowDefinition Height="40"/>
+                    <RowDefinition Height="40"/>
+                    <RowDefinition Height="40"/>
+                    <RowDefinition Height="40"/>
+                </Grid.RowDefinitions>
+
+                <!--#region Address-->
+                <TextBlock
+                Grid.Row="1"
+                Text="{Binding AddressMachineCommandText}"
+                HorizontalAlignment="Center" Width="auto"
+                  />
+                <TextBox x:Name="txb_address"
+              Grid.Column="1"
+              Grid.Row="1"
+              Text="{Binding AddressMachine, UpdateSourceTrigger=PropertyChanged}"
+              PreviewTextInput="txb_address_PreviewTextInput"
+                 />
+
+                <!--#endregion-->
+
+                <!--#region Baudrate  -->
+                <TextBlock Grid.Row="2"
+               Text="{Binding BaudrateMachineCommandText}"
+                HorizontalAlignment="Center" Width="auto"/>
+                <ComboBox x:Name="cbb_baudrate"
+               Grid.Row="2"
+               Grid.Column="1"
+               Background="Green"
+               ItemsSource="{Binding LstBaudrate}"
+               SelectedItem="{Binding SelectedBaudrate, UpdateSourceTrigger=PropertyChanged}"
+               />
+                <!--#endregion-->
+
+                <!--#region Name-->
+                <TextBlock
+              Grid.Row="3"
+              Text="{Binding NameMachineCommandText}"
+              HorizontalAlignment="Center" Width="auto"
+              />
+                <TextBox x:Name="txb_Name"
+                Grid.Column="1"
+                Grid.Row="3"
+              Text="{Binding NameMachine, UpdateSourceTrigger=PropertyChanged}"/>
+
+                <!--#endregion-->
+
+                <!--#region Port-->
+                <TextBlock Grid.Column="0"
+                  Grid.Row="4"
+                  Text="{Binding PortMachineCommandText}" 
+                  HorizontalAlignment="Center" Width="auto"
+                  />
+                <ComboBox x:Name="cbb_port"
+                Grid.Column="1"
+                Grid.Row="4"
+              ItemsSource="{Binding ListPost}"
+              SelectedItem="{Binding SelectedPort ,UpdateSourceTrigger=PropertyChanged}"
+              />
+
+                <!--#endregion-->
+                <!--#region Assembling-->
+                <ComboBox x:Name="cbb_ChooseAssembling"
+       Grid.Column="0"
+       Grid.Row="5"
+       ItemsSource="{Binding LstChooseAssembling}"
+       SelectedItem="{Binding SelectedChooseAssembling , UpdateSourceTrigger=PropertyChanged}"
+       />
+                <!--#endregion-->
+
+                <!--#region Assembling-->
+                <ComboBox x:Name="cbb_Assembling"
+       Grid.Column="1"
+       Grid.Row="5"
+       ItemsSource="{Binding LstAssemblings}"
+       DisplayMemberPath="value"   
+       SelectedValuePath="key"
+       SelectedItem="{Binding SelectedAssembling, UpdateSourceTrigger=PropertyChanged}"
+ />
+                <!--#endregion-->
+
+                <Button
+             Grid.Row="8"
+             Command="{Binding AddMachineCommand}"
+             Content="{Binding AddMachineCommandText}" HorizontalAlignment="Center"
+             VerticalAlignment="Center" Width="156" Height="40"
+             Background="Green" Grid.ColumnSpan="2" Margin="10,0,0,5"
+             />
+                <Button
+             Grid.Row="9"
+             Command="{Binding EditMachineCommand}"
+             Content="{Binding EditMachineCommandText}" HorizontalAlignment="Center"
+             IsEnabled="{Binding IsEnableBtnEditMachine}"
+             VerticalAlignment="Center" Width="156" Height="40"
+             Background="Green" Grid.ColumnSpan="2" Margin="10,0,0,5"
+             />
+                <Button
+             Grid.Row="10"
+             Command="{Binding DeleteMachineCommand}"
+             Content="{Binding DeleteMachineCommandText}" HorizontalAlignment="Center"
+             VerticalAlignment="Center" Width="156" Height="40"
+             Background="Green" Grid.ColumnSpan="2" Margin="10,0,0,5"
+             />
+                <Button
+         Grid.Row="11"
+             Command="{Binding ConnectCommand}"
+             Content="{Binding ConnectCommandText}" HorizontalAlignment="Center"
+             VerticalAlignment="Center" Width="156" Height="40"
+             Background="Green" Grid.ColumnSpan="2" Margin="10,0,0,5"
+         />
+            </Grid>
+        </Border>
+        <Border Grid.Column="1">
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="170"/>
+                    <ColumnDefinition Width="3*"/>
+                </Grid.ColumnDefinitions>
+
+                <!--Chọn style-->
+                <Border BorderThickness="0 0 1 0" BorderBrush="Gray" Grid.Column="0">
+                    <Grid>
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="40"/>
+                            <RowDefinition Height="auto"/>
+
+                        </Grid.RowDefinitions>
+                        <TextBlock HorizontalAlignment="Center" VerticalAlignment="Center" FontSize="18" Grid.Row="0" Grid.Column="0" Text="{Binding ChooseStyleCommandText}"/>
+                        <!-- ItemsControl để hiển thị các Button đã thêm -->
+                        <ItemsControl Grid.Row="1" ItemsSource="{Binding ButtonList}">
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate>
+                                    <Button Content="{Binding}" Width="100" Height="30" Margin="5"/>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                    </Grid>
+                </Border>
+
+                <Border Grid.Column="1">
+                    <Grid>
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="50"/>
+                            <RowDefinition Height="50"/>
+                            <RowDefinition Height="50"/>
+                            <RowDefinition Height="50"/>
+                            <RowDefinition Height="50"/>
+                            <RowDefinition Height="50"/>
+                            <RowDefinition Height="50"/>
+                            <RowDefinition Height="50"/>
+                            <RowDefinition Height="50"/>
+                            <RowDefinition Height="50"/>
+                        </Grid.RowDefinitions>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="2*"/>
+                        </Grid.ColumnDefinitions>
+
+                        <TextBlock HorizontalAlignment="Left" VerticalAlignment="Center" FontSize="18" Grid.Column="0" Grid.ColumnSpan="2"  Text="{Binding AddStyleCommandText}"/>
+                        <TextBlock HorizontalAlignment="Center" VerticalAlignment="Center" Grid.Row="1" Grid.Column="0" Text="{Binding NameCommandText}"/>
+                        <TextBlock HorizontalAlignment="Left" VerticalAlignment="Center" FontSize="16" Grid.Row="2" Grid.Column="0"  Text="{Binding SoleCommandText}"/>
+                        <TextBlock HorizontalAlignment="Center" VerticalAlignment="Center" Grid.Row="3" Grid.Column="0"  Text="{Binding MaxCommandText}"/>
+                        <TextBlock HorizontalAlignment="Center" VerticalAlignment="Center" Grid.Row="4" Grid.Column="0"  Text="{Binding MinCommandText}"/>
+                        <TextBlock HorizontalAlignment="Left" VerticalAlignment="Center" FontSize="16" Grid.Row="5" Grid.Column="0"  Text="{Binding ShoesCommandText}"/>
+                        <TextBlock HorizontalAlignment="Center" VerticalAlignment="Center" Grid.Row="6" Grid.Column="0"  Text="{Binding MaxCommandText}"/>
+                        <TextBlock HorizontalAlignment="Center" VerticalAlignment="Center" Grid.Row="7" Grid.Column="0"  Text="{Binding MinCommandText}"/>
+                        <TextBox 
+                                x:Name="cbb_name" 
+                                Grid.Row="1" 
+                                Grid.Column="1"
+                                Margin="10 10 5 10" 
+                                Text="{Binding NameStyle, UpdateSourceTrigger=PropertyChanged}"
+                                >
+
+                        </TextBox>
+                        
+                        <TextBox 
+                                x:Name="de_Max" 
+                                Grid.Row="3" 
+                                Grid.Column="1"
+                                Margin="10 10 5 10" 
+                                Text="{Binding DeMax, UpdateSourceTrigger=PropertyChanged}"
+                                >
+
+                        </TextBox>
+                        <TextBox 
+                                x:Name="de_Min" 
+                                Grid.Row="4" 
+                                Grid.Column="1"
+                                Margin="10 10 5 10" 
+                                Text="{Binding DeMin, UpdateSourceTrigger=PropertyChanged}"
+                                >
+
+                        </TextBox>
+                        <TextBox 
+        x:Name="giay_Max" 
+        Grid.Row="6" 
+        Grid.Column="1"
+        Margin="10 10 5 10" 
+        Text="{Binding GiayMax, UpdateSourceTrigger=PropertyChanged}"
+        >
+
+                        </TextBox>
+                        <TextBox 
+        x:Name="giay_Min" 
+        Grid.Row="7" 
+        Grid.Column="1"
+        Margin="10 10 5 10" 
+        Text="{Binding GiayMin, UpdateSourceTrigger=PropertyChanged}"
+        >
+
+                        </TextBox>
+                        
+                        <Button 
+                            x:Name="btn_AddStyle" 
+                            Grid.Row="8"
+                            Grid.Column="1"
+                            Content="{Binding AddStyleCommandText}" 
+                            Command="{Binding AddStyleCommand}" 
+                            Margin="10 10 5 10" 
+                            Background="Green"
+                            IsEnabled="{Binding IsEnabledBtnAddStyle}"/>
+
+                        <Button 
+                            x:Name="btn_DeleteStyle" 
+                            Grid.Row="9"
+                            Grid.Column="1"
+                            Content="{Binding DeleteStyleCommandText}" 
+                            Margin="10 10 5 10" 
+                            Background="Green"
+                            Command="{Binding DeleteStyleCommand}"
+                            IsEnabled="{Binding IsEnabledBtnDelete}"
+                            />
+                    </Grid>
+
+                </Border>
+
+            </Grid>
+        </Border>
+    </Grid>
+</UserControl>

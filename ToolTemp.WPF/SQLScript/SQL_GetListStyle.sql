@@ -1,0 +1,7 @@
+CREATE PROCEDURE GetListStyle
+		
+AS
+BEGIN
+	SELECT *
+	FROM dv_style
+END;
