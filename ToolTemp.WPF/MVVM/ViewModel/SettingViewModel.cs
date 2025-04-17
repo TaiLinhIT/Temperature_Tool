@@ -662,7 +662,22 @@ namespace ToolTemp.WPF.MVVM.ViewModel
 
             GetPortName();
 
-            
+            IsEnabledBtnConnect = false;
+            //MessageBox.Show("Connection successful!");
+            _toolViewModel.DeMax = 75;
+            _toolViewModel.DeMin = 70;
+            _toolViewModel.GiayMax = 65;
+            _toolViewModel.GiayMin = 60;
+            _toolViewModel.idStyle = 2;
+            _toolViewModel.NameStyle = "Decker";
+            _toolViewModel.Start();
+            for (int i = 1; i <= 6; i++)
+            {
+                _toolViewModel.SetFactory("VB2", i);
+                _toolViewModel.GetTempFromMachine(i, i); // Truyền thêm IdMachine
+
+            }
+
         }
 
         #endregion
@@ -907,16 +922,7 @@ namespace ToolTemp.WPF.MVVM.ViewModel
 
         public async void ExecuteConnectCommand(object parameter)
         {
-            //if (string.IsNullOrWhiteSpace(Port) || !DataModelConstant.BaudrateConst.Contains(Baudrate))
-            //{
-            //    MessageBox.Show("Please connect to the device before");
-            //    return;
-            //}
-            //if (Port == "COM1" || Baudrate != 2400)
-            //{
-            //    MessageBox.Show("Please choose correct connection");
-            //    return;
-            //}
+            
 
             try
             {
@@ -931,10 +937,9 @@ namespace ToolTemp.WPF.MVVM.ViewModel
                 
                 _toolViewModel.Start();
                 IsEnabledBtnConnect = false;
-                MessageBox.Show("Connection successful!");
+                //MessageBox.Show("Connection successful!");
+                
 
-                
-                
 
             }
             catch (Exception ex)

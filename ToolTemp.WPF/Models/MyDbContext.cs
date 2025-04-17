@@ -26,7 +26,7 @@ namespace ToolTemp.WPF.Models
 
         protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
         {
-            base.OnConfiguring(optionsBuilder.UseSqlServer(@"Server=10.30.80.1;Database=PowerTempWatch;User ID=sa;Password=greenland@VN;TrustServerCertificate=True;MultipleActiveResultSets=True;"));
+            base.OnConfiguring(optionsBuilder.UseSqlServer(@"Server=10.30.201.201;Database=PowerTempWatch;User ID=sa;Password=greenland@VN;TrustServerCertificate=True;MultipleActiveResultSets=True;"));
         }
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)

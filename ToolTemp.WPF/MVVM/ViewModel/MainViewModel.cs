@@ -163,7 +163,6 @@ namespace ToolTemp.WPF.MVVM.ViewModel
                     _settingViewModel.SelectedAssembling = new KeyValue(); // Khởi tạo mới
                 }
                 _settingViewModel.SelectedAssembling.key = machine.Line;
-
                 _settingViewModel.SelectedChooseAssembling = machine.LineCode == "H" ? "Nong" : "Lanh";
                 _settingViewModel.SelectedPort = machine.Port;
                 _settingViewModel.NameMachine = machine.Name;
