@@ -1,18 +1,5 @@
-﻿using GalaSoft.MvvmLight.Messaging;
-using Microsoft.EntityFrameworkCore;
-using Microsoft.Identity.Client;
-using System;
-using System.Collections.Generic;
-using System.Collections.ObjectModel;
-using System.Drawing.Drawing2D;
+﻿using System.Collections.ObjectModel;
 using System.IO.Ports;
-using System.Linq;
-using System.Net.WebSockets;
-using System.Reflection.PortableExecutable;
-using System.Text;
-using System.Threading.Tasks;
-using System.Windows;
-using System.Windows.Forms;
 using System.Windows.Threading;
 using ToolTemp.WPF.Configs;
 using ToolTemp.WPF.Core;
@@ -20,7 +7,6 @@ using ToolTemp.WPF.Interfaces;
 using ToolTemp.WPF.Models;
 using ToolTemp.WPF.Services;
 using ToolTemp.WPF.Utils;
-using static Microsoft.EntityFrameworkCore.DbLoggerCategory.Database;
 
 namespace ToolTemp.WPF.MVVM.ViewModel
 {
@@ -58,17 +44,17 @@ namespace ToolTemp.WPF.MVVM.ViewModel
         public string FactoryCode { get; private set; }
         public int AddressCurrent { get; private set; }
 
-        
-        public void SetFactory(string factory,int address)
+
+        public void SetFactory(string factory, int address)
         {
             FactoryCode = factory;
             AddressCurrent = address;
-   
-            ReloadData(FactoryCode,AddressCurrent); // Trigger the data reload immediately with the new address
+
+            ReloadData(FactoryCode, AddressCurrent); // Trigger the data reload immediately with the new address
             StartTimer(); // Start the timer only after setting the address
         }
         //constructor
-        public ToolViewModel(AppSettings appSettings,ToolService toolService, MyDbContext myDbContext)
+        public ToolViewModel(AppSettings appSettings, ToolService toolService, MyDbContext myDbContext)
         {
             CurrentLanguage = "en";
             _appSettings = appSettings;
@@ -77,8 +63,8 @@ namespace ToolTemp.WPF.MVVM.ViewModel
 
 
             Temperatures = new ObservableCollection<BusDataWithDevice>
-            {                
-                
+            {
+
                 new BusDataWithDevice() {Channel = _appSettings.Channel},
 
             };
@@ -100,7 +86,7 @@ namespace ToolTemp.WPF.MVVM.ViewModel
         {
             if (!string.IsNullOrEmpty(Port))
             {
-                List<BusDataWithDevice> data = await  _toolService.GetListDataWithDevicesAsync(Port, factory, address, Baudrate,CurrentLanguage);
+                List<BusDataWithDevice> data = await _toolService.GetListDataWithDevicesAsync(Port, factory, address, Baudrate, CurrentLanguage);
 
                 if (data != null)
                 {
@@ -320,7 +306,7 @@ namespace ToolTemp.WPF.MVVM.ViewModel
                 var hexWithCRC = Helper.CalculateCRC(decimalString);
                 var message = hexWithCRC.Replace(" ", ""); // Chuỗi đầy đủ với CRC
 
-                
+
                 // Gửi message qua SerialPort
                 _mySerialPort.Write(message);
             }
