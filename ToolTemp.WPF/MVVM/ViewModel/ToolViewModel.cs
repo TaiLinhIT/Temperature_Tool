@@ -344,14 +344,9 @@ namespace ToolTemp.WPF.MVVM.ViewModel
 
                         receivedDataByAddress[address][requestName] = actualValue;
 
-                        //Tool.Log($"Nhận {requestName} = {actualValue} tại địa chỉ {address}. Hiện có {receivedDataByAddress[address].Count}/{_appSetting.Requests.Count}");
-
-                        // Kiểm tra đủ số lượng request
                         if (receivedDataByAddress[address].Count == _appSettings.Requests.Count)
                         {
-                            //Tool.Log($"Đã đủ {_appSetting.Requests.Count} trường dữ liệu tại địa chỉ {address}, tiến hành lưu vào DB...");
 
-                            // Gọi hàm lưu trong background
                             _ = Task.Run(async () =>
                             {
                                 try
@@ -393,8 +388,6 @@ namespace ToolTemp.WPF.MVVM.ViewModel
         {
             try
             {
-                //Tool.Log($"Đang chuẩn bị lấy dữ liệu đã nhận cho địa chỉ {address}...");
-
                 Dictionary<string, double> dataForAddress;
 
                 lock (lockObject)
@@ -404,11 +397,7 @@ namespace ToolTemp.WPF.MVVM.ViewModel
                         Tool.Log($"Không tìm thấy dữ liệu cho địa chỉ {address}.");
                         return;
                     }
-
-
                 }
-
-                //Tool.Log($"Đang tìm IdMachine tương ứng với địa chỉ {address}...");
 
                 var device = _appSettings.devices.FirstOrDefault(m => m.address == address);
                 if (device == null)
@@ -418,30 +407,37 @@ namespace ToolTemp.WPF.MVVM.ViewModel
                 }
 
                 int idMachine = device.devid;
-                //Tool.Log($"Tìm thấy IdMachine = {idMachine} cho địa chỉ {address}");
-
                 var now = DateTime.Now;
 
-                // 1. Chuẩn bị giá trị cần lưu
-                var valuesToSave = new Dictionary<string, double?>
+                // Lấy prefix từ idMachine: 1->A, 2->B, 3->C, 4->D
+                string prefix = GetPrefixFromIdMachine(idMachine);
+
+                // Danh sách suffix cố định
+                List<string> suffixes = new List<string>
                 {
-                    { "A01-前烘箱溫度", GetValueWithAddressSuffix(dataForAddress, "A01-前烘箱溫度", address) },
-                    { "A02-前烘箱溫度", GetValueWithAddressSuffix(dataForAddress, "A02-前烘箱溫度", address) },
-                    { "A03-加硫機溫度", GetValueWithAddressSuffix(dataForAddress, "A03-加硫機溫度", address) },
-                    { "A04-中段烘箱1-上溫度", GetValueWithAddressSuffix(dataForAddress, "A04-中段烘箱1-上溫度", address) },
-                    { "A05-中段烘箱1-下溫度", GetValueWithAddressSuffix(dataForAddress, "A05-中段烘箱1-下溫度", address) },
-                    { "A06-中段烘箱2-上溫度", GetValueWithAddressSuffix(dataForAddress, "A06-中段烘箱2-上溫度", address) },
-                    { "A07-中段烘箱2-下溫度", GetValueWithAddressSuffix(dataForAddress, "A07-中段烘箱2-下溫度", address) },
-                    { "A08-中段烘箱3-上溫度", GetValueWithAddressSuffix(dataForAddress, "A08-中段烘箱3-上溫度", address) }
+                    "01-前烘箱溫度",
+                    "02-前烘箱溫度",
+                    "03-加硫機溫度",
+                    "04-中段烘箱1-上溫度",
+                    "05-中段烘箱1-下溫度",
+                    "06-中段烘箱2-上溫度",
+                    "07-中段烘箱2-下溫度",
+                    "08-中段烘箱3-上溫度"
                 };
 
-                // 2. Lấy danh sách control code theo devid
+                // Tạo dictionary giá trị cần lưu
+                var valuesToSave = suffixes.ToDictionary(
+                    suffix => $"{prefix}{suffix}",  // Key để lưu/so sánh với control code
+                    suffix => GetValueWithAddressSuffix(dataForAddress, suffix, address) // Tra key không có prefix
+                );
+
+
+                // Lấy danh sách control code theo devid
                 using (var newContext = new MyDbContext())
                 {
                     var controlCodes = await newContext.controlcodes
                         .Where(c => c.devid == idMachine)
                         .ToListAsync();
-
 
                     int savedCount = 0;
 
@@ -459,9 +455,7 @@ namespace ToolTemp.WPF.MVVM.ViewModel
                                 value = item.Value.Value,
                                 day = now
                             };
-                            //Tool.Log($"→ Đang lưu: devid={sensorData.devid}, codeid={sensorData.codeid}, value={sensorData.value}, day={sensorData.day}");
 
-                            // Gọi và kiểm tra kết quả lưu
                             bool isSaved = await _toolService.InsertToSensorDataAsync(sensorData);
                             if (isSaved)
                             {
@@ -470,7 +464,6 @@ namespace ToolTemp.WPF.MVVM.ViewModel
                         }
                     }
 
-                    // Logging kết quả
                     if (savedCount == 0)
                     {
                         Tool.Log($"⚠ Không có bản ghi nào được lưu vào bảng SensorData cho địa chỉ {address}.");
@@ -480,19 +473,32 @@ namespace ToolTemp.WPF.MVVM.ViewModel
                         Tool.Log($"→ Đã lưu {savedCount} bản ghi vào bảng SensorData cho địa chỉ {address}.");
                     }
                 }
-
             }
             catch (Exception ex)
             {
                 Tool.Log($"Lỗi khi lưu dữ liệu cho địa chỉ {address}: {ex.Message}");
             }
         }
-        private double? GetValueWithAddressSuffix(Dictionary<string, double> data, string key, int address)
+
+        private double? GetValueWithAddressSuffix(Dictionary<string, double> data, string suffixOnly, int address)
         {
-            string fullKey = $"{key}_Address_{address}";
-            return data.ContainsKey(fullKey) ? data[fullKey] : null;
+            string fullKey = $"{suffixOnly}_Address_{address}";
+            return data.TryGetValue(fullKey, out var value) ? value : null;
         }
+
         #endregion
+        private string GetPrefixFromIdMachine(int idMachine)
+        {
+            // Chuyển 1 => A, 2 => B, 3 => C, 4 => D
+            return idMachine switch
+            {
+                1 => "A",
+                2 => "B",
+                3 => "C",
+                4 => "D",
+                _ => throw new ArgumentException("Invalid idMachine")
+            };
+        }
 
 
         #region Language
