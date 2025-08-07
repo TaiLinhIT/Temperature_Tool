@@ -1,40 +1,26 @@
 ﻿using GalaSoft.MvvmLight.Messaging;
-using HslCommunication.ModBus;
-using MaterialDesignThemes.Wpf;
-using Microsoft.EntityFrameworkCore;
 using Newtonsoft.Json;
 using System.Collections;
 using System.Collections.ObjectModel;
-using System.Collections.Specialized;
 using System.ComponentModel;
 using System.ComponentModel.DataAnnotations;
-using System.Configuration;
 using System.Globalization;
 using System.IO;
-using System.IO.Ports;
-using System.Net;
-using System.Reflection.PortableExecutable;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Data;
-using System.Windows.Documents;
 using System.Windows.Input;
 using System.Windows.Media;
-using System.Windows.Shapes;
-using System.Xml;
 using ToolTemp.WPF.Configs;
 using ToolTemp.WPF.Constants;
 using ToolTemp.WPF.Core;
 using ToolTemp.WPF.Interfaces;
 using ToolTemp.WPF.Models;
 using ToolTemp.WPF.Services;
-using ToolTemp.WPF.Utils;
-using static Microsoft.EntityFrameworkCore.DbLoggerCategory.Database;
-using ValidationResult = System.ComponentModel.DataAnnotations.ValidationResult;
 
 namespace ToolTemp.WPF.MVVM.ViewModel
 {
-    public class MainViewModel : BaseViewModel , INotifyPropertyChanged 
+    public class MainViewModel : BaseViewModel, INotifyPropertyChanged
     {
         private readonly IToolService _toolService;
         private BaseViewModel _currentViewModel;
@@ -47,7 +33,7 @@ namespace ToolTemp.WPF.MVVM.ViewModel
 
 
         //constructor
-        public MainViewModel(MySerialPortService mySerialPortService, MyDbContext myDbContext, AppSettings appSettings, SettingViewModel settingViewModel,ToolViewModel viewModel, ToolService toolService)
+        public MainViewModel(MySerialPortService mySerialPortService, MyDbContext myDbContext, AppSettings appSettings, SettingViewModel settingViewModel, ToolViewModel viewModel, ToolService toolService)
         {
             //LstFactory = DataModelConstant.FactoryConst.Values;
             LstAddress = DataModelConstant.AddressConst;
@@ -202,7 +188,6 @@ namespace ToolTemp.WPF.MVVM.ViewModel
                     if (machine.Address > 0 && machine.Id > 0)
                     {
                         _toolViewModel.SetFactory(CurrentFactory, machine.Address);
-                        _toolViewModel.GetTempFromMachine(machine.Address, machine.Id); // Truyền thêm IdMachine
                     }
                     else
                     {
@@ -237,7 +222,7 @@ namespace ToolTemp.WPF.MVVM.ViewModel
         public string SettingCommandText { get; private set; }
         public string HelpCommandText { get; private set; }
         public string MenuCommandText { get; private set; }
-        
+
         private void UpdateTexts()
         {
             SettingCommandText = _languageService.GetString("Settings");
@@ -247,7 +232,7 @@ namespace ToolTemp.WPF.MVVM.ViewModel
 
             //SettingViewModel
             _settingViewModel.NameCommandText = _languageService.GetString("Name");
-            
+
             _settingViewModel.MaxCommandText = _languageService.GetString("Max");
             _settingViewModel.MinCommandText = _languageService.GetString("Min");
             _settingViewModel.SoleCommandText = _languageService.GetString("Sole");
@@ -339,14 +324,14 @@ namespace ToolTemp.WPF.MVVM.ViewModel
             {
                 Factory = factory.FactoryCode;
             }
-            
+
         }
 
 
         //Event open factory form
         private void ExcuteSelectFactoryForm(object obj)
         {
-            
+
         }
         private string _currentFactory;
         public string CurrentFactory
@@ -393,7 +378,7 @@ namespace ToolTemp.WPF.MVVM.ViewModel
 
         #endregion
 
-        
+
 
         public ObservableCollection<Button> _factoryButtons = new ObservableCollection<Button>();
         public ObservableCollection<Button> FactoryButtons
@@ -435,7 +420,7 @@ namespace ToolTemp.WPF.MVVM.ViewModel
             }
         }
 
-       
+
 
         private void Btn_Machine_MouseRightButtonDown(object sender, MouseButtonEventArgs e)
         {
@@ -444,10 +429,10 @@ namespace ToolTemp.WPF.MVVM.ViewModel
             {
                 MessageBox.Show("thuc hien tiep");
             }
-            
+
         }
 
-       
+
         private void NewButton_MouseRightButtonDown(object sender, MouseButtonEventArgs e)
         {
             MessageBox.Show("ok");
@@ -457,7 +442,7 @@ namespace ToolTemp.WPF.MVVM.ViewModel
 
         public async void MainButton_Click(object sender, RoutedEventArgs e)
         {
-            if (_deviceConfig.Port == "" || _deviceConfig.Port == null )
+            if (_deviceConfig.Port == "" || _deviceConfig.Port == null)
             {
                 MessageBox.Show("Please connect to the device in setting form before!");
                 CurrentViewModel = _settingViewModel;
@@ -505,7 +490,7 @@ namespace ToolTemp.WPF.MVVM.ViewModel
                         {
                             int address = await task;
                             Line = await _toolService.GetLineByAddressAndFactoryAsync(address, CurrentFactory);
-                           // await _toolViewModel.GetTempFromMachine(address);
+                            // await _toolViewModel.GetTempFromMachine(address);
                         }
                         else if (button.Tag is int address && _toolViewModel._mySerialPort.IsOpen())
                         {
@@ -517,7 +502,7 @@ namespace ToolTemp.WPF.MVVM.ViewModel
             }
         }
 
-        
+
         public ICommand btnMachineCommand { get; set; }
 
 
@@ -533,7 +518,7 @@ namespace ToolTemp.WPF.MVVM.ViewModel
             }
         }
         private int _Address;
-        [Required(ErrorMessage ="Address is required")]
+        [Required(ErrorMessage = "Address is required")]
         public int Address
         {
             get => _Address;
@@ -556,7 +541,7 @@ namespace ToolTemp.WPF.MVVM.ViewModel
         }
         private string _Factory;
 
-        [Required(ErrorMessage ="Factory is required")]
+        [Required(ErrorMessage = "Factory is required")]
         public string Factory
         {
             get => _Factory;
@@ -572,15 +557,17 @@ namespace ToolTemp.WPF.MVVM.ViewModel
         public DeviceConfig DeviceConfig
         {
             get { return _deviceConfig; }
-            set { 
+            set
+            {
                 _deviceConfig = value;
                 OnPropertyChanged(nameof(DeviceConfig));
             }
         }
 
-        
+
         private bool isEnableBtnSaveNewMachine;
-        private bool IsEnableBtnSaveNewMachine { 
+        private bool IsEnableBtnSaveNewMachine
+        {
             get { return isEnableBtnSaveNewMachine; }
             set
             {
@@ -648,24 +635,24 @@ namespace ToolTemp.WPF.MVVM.ViewModel
                 _toolViewModel.Port = message.Port;
                 _toolViewModel.Baudrate = message.Baudrate;
                 //_toolViewModel.Address = message.AddressMachine;
-                
+
             }
         }
 
 
-        
 
-        
+
+
 
         private void ExecuteDataForm(object parameter)
         {
             _toolViewModel.StopTimer();
-           // CurrentViewModel = _addmiachineViewModel;
+            // CurrentViewModel = _addmiachineViewModel;
         }
         private void ExecuteSettingForm(object parameter)
         {
             _toolViewModel.StopTimer();
-            
+
             CurrentViewModel = _settingViewModel;
         }
 
@@ -682,7 +669,7 @@ namespace ToolTemp.WPF.MVVM.ViewModel
         //        _mySerialPort.Write(message);
 
         //}
-        
+
 
         #region LogCheck
         private readonly int _maxMessages = 8;
@@ -724,11 +711,11 @@ namespace ToolTemp.WPF.MVVM.ViewModel
             throw new NotImplementedException();
         }
 
-        public  void OnFactorySelectionChanged()
+        public void OnFactorySelectionChanged()
         {
             // Lấy danh sách các Line từ _toolService
-            var listOfLines =  _toolService.GetListAssembling(Factory).Select(x => x.Line).ToList();
-            
+            var listOfLines = _toolService.GetListAssembling(Factory).Select(x => x.Line).ToList();
+
 
             // Chuyển đổi thành ObservableCollection<string>
             LstLine = new ObservableCollection<string>(listOfLines);

@@ -1,10 +1,5 @@
-﻿using System;
-using System.Collections.Generic;
-using System.IO.Ports;
-using System.Linq;
+﻿using System.IO.Ports;
 using System.Text;
-using System.Threading.Tasks;
-using ToolTemp.WPF.Models;
 
 namespace ToolTemp.WPF.Utils
 {
@@ -17,68 +12,82 @@ namespace ToolTemp.WPF.Utils
         /// <param name="str"></param>
         public static void SerialPortWrite(SerialPort _serialPort, string str)
         {
-            byte[] data = new byte[1]; 
+            byte[] data = new byte[1];
             string strs = str;
-            
+
             if (strs.Length % 2 == 1)
             {
                 strs = strs.Insert(strs.Length - 1, "0");
             }
-            
+
             for (int i = 0; i < strs.Length / 2; i++)
             {
-               
+
                 data[0] = Convert.ToByte(strs.Substring(i * 2, 2), 16);
-              
+
                 _serialPort.Write(data, 0, 1);
             }
             //_serialPort.WriteLine(str);
         }
 
-        /// <summary>
-        /// Generate CRC for Command
-        /// </summary>
-        /// <param name="decimalString"></param>
-        /// <returns></returns>
-        public static string CalculateCRC(string decimalString)
+        public static byte[] ConvertHexStringToByteArray(string hex)
         {
-            var result = string.Empty;
+            // Loại bỏ khoảng trắng và đảm bảo chuỗi được chuyển sang chữ hoa
+            hex = hex.Replace(" ", "").ToUpper();
+
+            // Kiểm tra nếu chuỗi có độ dài lẻ
+            if (hex.Length % 2 != 0)
+            {
+                throw new FormatException("Hex string must have an even number of characters.");
+            }
+
+            // Khởi tạo mảng byte với độ dài bằng nửa độ dài chuỗi hex
+            byte[] bytes = new byte[hex.Length / 2];
+
+            for (int i = 0; i < hex.Length; i += 2)
+            {
+                // Chuyển mỗi cặp ký tự hex thành một byte
+                bytes[i / 2] = Convert.ToByte(hex.Substring(i, 2), 16);
+            }
+
+            return bytes;
+        }
+        public static string CalculateCRC(string request)
+        {
             try
             {
-                var hexString = DecimalStringToHexString(decimalString);
-                byte[] data = HexStringToByteArray(hexString);
-                ushort crc = 0xFFFF;
+                // Chuyển chuỗi request thành mảng byte
+                byte[] requestBytes = ConvertHexStringToByteArray(request);
 
-                for (int pos = 0; pos < data.Length; pos++)
+                // Tính toán CRC
+                ushort crc = 0xFFFF; // Giá trị CRC ban đầu
+
+                foreach (byte byteData in requestBytes)
                 {
-                    crc ^= (ushort)data[pos];          // XOR byte vào CRC
-
-                    for (int i = 8; i != 0; i--)       // Duyệt qua 8 bits của byte
+                    crc ^= byteData;
+                    for (int i = 0; i < 8; i++)
                     {
-                        if ((crc & 0x0001) != 0)       // Nếu bit thấp nhất là 1
+                        if ((crc & 0x0001) != 0)
                         {
-                            crc >>= 1;                 // Dịch phải 1 bit
-                            crc ^= 0xA001;             // XOR với đa thức chuẩn
+                            crc >>= 1;
+                            crc ^= 0xA001;
                         }
-                        else                           // Nếu bit thấp nhất là 0
+                        else
                         {
-                            crc >>= 1;                 // Chỉ dịch phải 1 bit
+                            crc >>= 1;
                         }
                     }
                 }
 
-                byte[] crcBytes = new byte[2];
-                crcBytes[0] = (byte)(crc & 0xFF);      // Lưu byte thấp
-                crcBytes[1] = (byte)((crc >> 8) & 0xFF); // Lưu byte cao
+                // Chuyển CRC thành chuỗi theo cặp byte (ví dụ: "47 41")
+                string crcResult = crc.ToString("X4").ToUpper();  // Lấy kết quả CRC theo định dạng hex 4 ký tự
+                string formattedCRC = string.Join(" ", new[] { crcResult.Substring(2, 2), crcResult.Substring(0, 2) });
 
-                var b1 = BitConverter.ToString(crcBytes).Replace("-", " ");
-                result = $"{hexString} {b1}";
-                return result;
+                return formattedCRC; // Trả về CRC theo đúng định dạng cặp byte
             }
             catch (Exception ex)
             {
-                Tool.Log("ERRO: Can not generate command");
-                return result;
+                throw new Exception("Error calculating CRC: " + ex.Message);
             }
         }
 
@@ -116,6 +125,6 @@ namespace ToolTemp.WPF.Utils
             return data;
         }
 
-        
+
     }
 }

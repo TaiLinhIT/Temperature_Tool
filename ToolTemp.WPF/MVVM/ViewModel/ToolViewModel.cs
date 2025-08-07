@@ -1,4 +1,5 @@
-﻿using System.Collections.ObjectModel;
+﻿using Microsoft.EntityFrameworkCore;
+using System.Collections.ObjectModel;
 using System.IO.Ports;
 using System.Windows.Threading;
 using ToolTemp.WPF.Configs;
@@ -30,6 +31,7 @@ namespace ToolTemp.WPF.MVVM.ViewModel
         public string CurrentFactory;
         public int CurrentIdMachine;
         private readonly Dictionary<string, int> _requestIdMapping = new Dictionary<string, int>();
+        private readonly SemaphoreSlim _serialLock = new(1, 1);// SemaphoreSlim để đồng bộ hóa truy cập vào cổng COM
 
         public ObservableCollection<BusDataWithDevice> _temperatures;
         public ObservableCollection<BusDataWithDevice> Temperatures
@@ -50,7 +52,7 @@ namespace ToolTemp.WPF.MVVM.ViewModel
             FactoryCode = factory;
             AddressCurrent = address;
 
-            ReloadData(FactoryCode, AddressCurrent); // Trigger the data reload immediately with the new address
+            //ReloadData(FactoryCode, AddressCurrent); // Trigger the data reload immediately with the new address
             StartTimer(); // Start the timer only after setting the address
         }
         //constructor
@@ -77,7 +79,7 @@ namespace ToolTemp.WPF.MVVM.ViewModel
         private void DispatcherTimer_Tick(object sender, EventArgs e)
         {
 
-            ReloadData(FactoryCode, AddressCurrent);
+            //ReloadData(FactoryCode, AddressCurrent);
 
         }
 
@@ -104,7 +106,7 @@ namespace ToolTemp.WPF.MVVM.ViewModel
 
         public void StartTimer()
         {
-            ReloadData(FactoryCode, AddressCurrent);
+            //ReloadData(FactoryCode, AddressCurrent);
             _dispatcherTimer.Start();
         }
 
@@ -114,13 +116,16 @@ namespace ToolTemp.WPF.MVVM.ViewModel
         }
 
 
-        public void Start()
+        public async void Start()
         {
             _mySerialPort = new MySerialPortService();
             _mySerialPort.Port = Port;
             _mySerialPort.Baudrate = Baudrate;
             _mySerialPort.Sdre += SerialPort_DataReceived;
             _mySerialPort.Conn();
+            Tool.Log($"Serial port started on {Port} with baudrate {Baudrate} status {_mySerialPort.IsOpen}");
+            await SendRequestsToAllAddressesAsync(); // Gửi yêu cầu đến tất cả các địa chỉ máy móc
+
         }
         public void Close()
         {
@@ -134,14 +139,115 @@ namespace ToolTemp.WPF.MVVM.ViewModel
 
             }
         }
+        public async Task SendRequestsToAllAddressesAsync()
+        {
+            for (int address = 1; address <= _appSettings.TotalMachine; address++)
+            {
+                //SetFactory("VB2", address);
+                int capturedAddress = address; // tránh closure issue
+                _ = Task.Run(() => LoopRequestsForMachineAsync(capturedAddress));
+            }
+        }
+        private async Task LoopRequestsForMachineAsync(int address)
+        {
+            while (true)
+            {
+                //Tool.Log($"Máy {address}: Bắt đầu gửi dữ liệu");
 
-        #region Read Temperature and save database
+                foreach (var request in _appSettings.Requests)
+                {
+                    string requestName = $"{request.Key}_Address_{address}";
+                    await SendRequestAsync(requestName, request.Value, address);
+                    await Task.Delay(1000);
+                }
 
-        // Cập nhật hàng đợi để lưu cả dữ liệu và IdMachine
-        private readonly Queue<(byte[] Data, int IdMachine)> _dataQueue = new Queue<(byte[] Data, int IdMachine)>();
-        private readonly object _queueLock = new object();
+                await Task.Delay(TimeSpan.FromMinutes(_appSettings.TimeSendRequest)); // Hoặc dùng _appSetting.TimeReloadData
+            }
+        }
+        private Dictionary<string, CancellationTokenSource> responseTimeouts = new Dictionary<string, CancellationTokenSource>();
+        private static readonly object lockObject = new object();
 
-        // Sự kiện nhận dữ liệu từ SerialPort
+
+        #region Gửi request
+        private async Task SendRequestAsync(string requestName, string requestHex, int address)
+        {
+            try
+            {
+                await _serialLock.WaitAsync(); //Chỉ 1 máy được gửi tại 1 thời điểm
+
+                // B1: Thêm vào activeRequests
+                string requestKey = $"{address}_{requestName}";
+                if (!activeRequests.ContainsKey(requestKey))
+                {
+                    activeRequests[requestKey] = requestName;
+
+                    //Thiết lập timeout nếu cần
+                    var cts = new CancellationTokenSource();
+                    responseTimeouts[address.ToString()] = cts;
+                    _ = StartResponseTimeoutAsync(address.ToString(), cts.Token);
+                }
+
+                // B2: Xử lý dữ liệu hex
+                byte[] requestBytes = _toolService.ConvertHexStringToByteArray(requestHex);
+                string addressHex = _toolService.ConvertToHex(address).PadLeft(2, '0');
+                string requestString = addressHex + " " + BitConverter.ToString(requestBytes).Replace("-", " ");
+                string CRCString = Helper.CalculateCRC(requestString);
+                requestString += " " + CRCString;
+
+                // B3: Gửi
+                _mySerialPort.Write(requestString);
+                //Tool.Log($"Máy {address} gửi {requestName}: {requestString}");
+
+                await Task.Delay(1000); // Chờ thiết bị phản hồi
+            }
+            catch (Exception ex)
+            {
+                Tool.Log($"Lỗi gửi request {requestName}: {ex.Message}");
+            }
+            finally
+            {
+                _serialLock.Release(); //Giải phóng cho máy khác gửi
+            }
+        }
+        private async Task StartResponseTimeoutAsync(string addressKey, CancellationToken cancellationToken)
+        {
+            try
+            {
+                int timeoutSeconds = _appSettings.TimeSendRequest; // đảm bảo bạn đã config nó trong appsettings.json
+
+                await Task.Delay(TimeSpan.FromSeconds(timeoutSeconds), cancellationToken);
+
+                // Nếu không bị hủy, nghĩa là timeout xảy ra
+                if (activeRequests.Keys.Any(k => k.StartsWith($"{addressKey}_")))
+                {
+                    //Tool.Log($"Timeout: Không nhận được phản hồi từ máy có địa chỉ {addressKey} sau {timeoutSeconds} giây.");
+                    activeRequests = activeRequests
+                        .Where(kvp => !kvp.Key.StartsWith($"{addressKey}_"))
+                        .ToDictionary(kvp => kvp.Key, kvp => kvp.Value);
+                }
+            }
+            catch (TaskCanceledException)
+            {
+                // Bị huỷ đúng cách do có phản hồi đến
+                Tool.Log($"Máy {addressKey} đã phản hồi đúng hạn.");
+            }
+            catch (Exception ex)
+            {
+                Tool.Log($"Lỗi khi xử lý timeout cho địa chỉ {addressKey}: {ex.Message}");
+            }
+        }
+
+        #endregion
+
+        //private Dictionary<string, string> activeRequests = new Dictionary<string, string>();// đối tượng dùng làm khóa
+        private Dictionary<string, string> activeRequests = new Dictionary<string, string>(); // key = "address_requestName"
+
+        // Biến lưu trạng thái các request đã nhận
+        private readonly Dictionary<string, double> receivedData = new Dictionary<string, double>();
+
+        private Dictionary<int, Dictionary<string, double>> receivedDataByAddress = new Dictionary<int, Dictionary<string, double>>();
+        private HashSet<string> processedRequests = new HashSet<string>();
+        #region Nhận dữ liệu
         private async void SerialPort_DataReceived(object sender, SerialDataReceivedEventArgs e)
         {
             try
@@ -151,18 +257,47 @@ namespace ToolTemp.WPF.MVVM.ViewModel
                 byte[] bufferb = new byte[bytesCount];
                 sp.Read(bufferb, 0, bytesCount);
 
+                // Tìm IdMachine từ Address (byte đầu tiên là địa chỉ thiết bị)
+                int address = bufferb[0];
 
-                // Tìm IdMachine từ ánh xạ
-                int idMachine = _context.machines.Where(x => x.Address == (int)bufferb[0]).Select(x => x.Id).FirstOrDefault();
 
-                // Đưa dữ liệu và IdMachine vào hàng đợi
-                lock (_queueLock)
+                // Lặp qua các activeRequests để tìm đúng request
+                var matchedRequest = activeRequests.FirstOrDefault(kvp => kvp.Key.StartsWith($"{address}_"));
+
+                if (!string.IsNullOrEmpty(matchedRequest.Key))
                 {
-                    _dataQueue.Enqueue((bufferb, idMachine));
-                }
+                    string requestName = matchedRequest.Value;
+                    string requestKey = matchedRequest.Key;
 
-                // Xử lý hàng đợi
-                await ProcessDataQueueAsync();
+                    // Tránh xử lý trùng trong cùng một lần nhận
+                    if (processedRequests.Contains(requestKey))
+                    {
+                        Tool.Log($"Data for {requestName} at address {address} already processed. Skipping...");
+                        return;
+                    }
+
+                    // Đánh dấu là đã xử lý
+                    processedRequests.Add(requestKey);
+
+                    // Hủy timeout nếu có
+                    if (responseTimeouts.ContainsKey(address.ToString()))
+                    {
+                        responseTimeouts[address.ToString()].Cancel();
+                        responseTimeouts.Remove(address.ToString());
+                    }
+
+                    activeRequests.Remove(requestKey);
+
+                    // Gọi hàm xử lý
+                    ParseAndStoreReceivedData(bufferb, requestName, address);
+
+                    // XÓA KEY để lần sau vẫn xử lý được
+                    processedRequests.Remove(requestKey);
+                }
+                else
+                {
+                    Tool.Log($"Received data from address {address} does not match any active request.");
+                }
             }
             catch (Exception ex)
             {
@@ -173,149 +308,191 @@ namespace ToolTemp.WPF.MVVM.ViewModel
         }
 
 
-        // Xử lý dữ liệu trong hàng đợi
-        private async Task ProcessDataQueueAsync()
+        #endregion
+        #region Dịch dữ liệu
+        private void ParseAndStoreReceivedData(byte[] data, string requestName, int address)
         {
-            while (_dataQueue.Count > 0)
+            try
             {
-                (byte[] Data, int IdMachine) item;
-
-                // Lấy dữ liệu và IdMachine từ hàng đợi
-                lock (_queueLock)
+                if (data.Length >= 9)
                 {
-                    if (_dataQueue.Count == 0) break;
-                    item = _dataQueue.Dequeue();
-                }
-
-                byte[] data = item.Data;
-                int idMachine = item.IdMachine;
-
-                // Kiểm tra CRC
-                if (Tool.CRC_PD(data))
-                {
-                    // Nếu Function Code là 03 (Read Data)
-                    if (data[1] == 3)
+                    int dataByteCount = data[2];
+                    if (dataByteCount != 4 || data.Length < 5 + dataByteCount)
                     {
-                        try
+                        Tool.Log($"Invalid data for {requestName} at address {address}: insufficient length.");
+                        return;
+                    }
+
+                    // Giải mã giá trị float
+                    byte[] bytes = new byte[] { data[4], data[3], data[6], data[5] };
+
+
+                    double actualValue = BitConverter.ToSingle(bytes, 0);
+                    if (actualValue >= 999)
+                    {
+                        return; // Bỏ qua nếu dữ liệu không hợp lệ
+                    }
+
+
+
+                    actualValue = Math.Round(actualValue, 2);
+
+                    lock (lockObject)
+                    {
+                        if (!receivedDataByAddress.ContainsKey(address))
+                            receivedDataByAddress[address] = new Dictionary<string, double>();
+
+                        receivedDataByAddress[address][requestName] = actualValue;
+
+                        //Tool.Log($"Nhận {requestName} = {actualValue} tại địa chỉ {address}. Hiện có {receivedDataByAddress[address].Count}/{_appSetting.Requests.Count}");
+
+                        // Kiểm tra đủ số lượng request
+                        if (receivedDataByAddress[address].Count == _appSettings.Requests.Count)
                         {
-                            int address = data[0];
-                            string factory = FactoryCode;
-                            var modBusDTO = new BusDataTemp();
+                            //Tool.Log($"Đã đủ {_appSetting.Requests.Count} trường dữ liệu tại địa chỉ {address}, tiến hành lưu vào DB...");
 
-                            // Xử lý dữ liệu trả về
-                            byte[] bytes = new byte[] { data[4], data[3], data[6], data[5] };
-                            float temp = BitConverter.ToSingle(bytes, 0);
-                            if (temp >= 999)
-                            {
-                                return; // Bỏ qua nếu dữ liệu không hợp lệ
-                            }
-
-                            // Thiết lập các thuộc tính của modBusDTO
-                            modBusDTO.Temp = (double)temp;
-                            var channel = _mySerialPort.MapByteResponeToChannel(data[2], _appSettings);
-                            modBusDTO.Channel = channel;
-                            modBusDTO.Port = _appSettings.Port;
-                            modBusDTO.Factory = factory;
-                            modBusDTO.Baudrate = Baudrate;
-                            modBusDTO.AddressMachine = address;
-                            modBusDTO.IdStyle = idStyle;
-                            modBusDTO.Sensor_Typeid = 7;
-                            modBusDTO.UploadDate = DateTime.Now;
-                            var find = _context.Style.Where(x => x.Id == idStyle).ToList();
-                            int lastChannel = int.Parse(channel[channel.Length - 1].ToString());
-                            // Kiểm tra số thứ tự và so sánh nhiệt độ
-                            switch (lastChannel % 2) // % 2 kiểm tra chẵn lẻ
-                            {
-                                case 1: // Số lẻ
-                                    modBusDTO.Max = DeMax;
-                                    modBusDTO.Min = DeMin;
-                                    modBusDTO.IsWarning = (decimal)temp < find.First().DeMin || (decimal)temp > find.First().DeMax;
-                                    break;
-
-                                case 0: // Số chẵn
-                                    modBusDTO.Max = GiayMax;
-                                    modBusDTO.Min = GiayMin;
-                                    modBusDTO.IsWarning = (decimal)temp < find.First().GiayMin || (decimal)temp > find.First().GiayMax;
-                                    break;
-
-                                default:
-                                    modBusDTO.IsWarning = false; // Trường hợp mặc định
-                                    break;
-                            }
-
-                            // Lưu IdMachine và Line
-                            modBusDTO.IdMachine = idMachine;
-                            modBusDTO.LineCode = _context.machines.Where(x => x.Id == idMachine).Select(x => x.LineCode).FirstOrDefault();
-                            modBusDTO.Line = _context.machines
-                                .Where(x => x.Id == idMachine)
-                                .Select(x => x.Line)
-                                .FirstOrDefault();
-
-                            // Lưu dữ liệu vào cơ sở dữ liệu
-                            await Task.Run(async () =>
+                            // Gọi hàm lưu trong background
+                            _ = Task.Run(async () =>
                             {
                                 try
                                 {
-                                    await _toolService.InsertData(modBusDTO);
+                                    await SaveAllData(address);
+
+                                    lock (lockObject)
+                                    {
+                                        receivedDataByAddress[address].Clear();
+                                        processedRequests.RemoveWhere(k => k.StartsWith($"{address}_"));
+                                    }
+
+                                    Tool.Log($"Lưu thành công dữ liệu cho địa chỉ {address}");
                                 }
-                                catch (Exception insertEx)
+                                catch (Exception ex)
                                 {
-                                    Tool.Log($"Error saving data: {insertEx.Message}");
-                                    if (insertEx.StackTrace != null)
-                                        Tool.Log(insertEx.StackTrace.ToString());
+                                    Tool.Log($"Lỗi khi lưu dữ liệu cho địa chỉ {address}: {ex.Message}");
                                 }
                             });
-                        }
-                        catch (Exception processEx)
-                        {
-                            Tool.Log($"Error processing data: {processEx.Message}");
-                            if (processEx.StackTrace != null)
-                                Tool.Log(processEx.StackTrace.ToString());
                         }
                     }
                 }
                 else
                 {
-                    Tool.Log($"Invalid data: {BitConverter.ToString(data)}");
+                    Tool.Log($"Incomplete data for {requestName} at address {address}.");
                 }
             }
-
-
+            catch (Exception ex)
+            {
+                Tool.Log($"Lỗi khi phân tích dữ liệu {requestName} tại địa chỉ {address}: {ex.Message}");
+                Tool.Log($"Dữ liệu gốc: {BitConverter.ToString(data)}");
+            }
         }
 
         #endregion
 
-        public async Task GetTempFromMachine(int address, int idMachine)
-        {
-            while (true)
-            {
-                var listChannel = _appSettings.ConfigCommand;
-                foreach (var item in listChannel)
-                {
-                    ModbusSendFunction("0" + address + item.AddressWrite, idMachine);
-                    await Task.Delay(TimeSpan.FromSeconds(Convert.ToInt32(_appSettings.TimeBusTemp)));
-                }
-            }
-        }
-
-
-        private void ModbusSendFunction(string decimalString, int idMachine)
+        #region Save database
+        private async Task SaveAllData(int address)
         {
             try
             {
-                var hexWithCRC = Helper.CalculateCRC(decimalString);
-                var message = hexWithCRC.Replace(" ", ""); // Chuỗi đầy đủ với CRC
+                //Tool.Log($"Đang chuẩn bị lấy dữ liệu đã nhận cho địa chỉ {address}...");
+
+                Dictionary<string, double> dataForAddress;
+
+                lock (lockObject)
+                {
+                    if (!receivedDataByAddress.TryGetValue(address, out dataForAddress))
+                    {
+                        Tool.Log($"Không tìm thấy dữ liệu cho địa chỉ {address}.");
+                        return;
+                    }
 
 
-                // Gửi message qua SerialPort
-                _mySerialPort.Write(message);
+                }
+
+                //Tool.Log($"Đang tìm IdMachine tương ứng với địa chỉ {address}...");
+
+                var device = _appSettings.devices.FirstOrDefault(m => m.address == address);
+                if (device == null)
+                {
+                    Tool.Log($"Không tìm thấy IdMachine với địa chỉ {address}");
+                    return;
+                }
+
+                int idMachine = device.devid;
+                //Tool.Log($"Tìm thấy IdMachine = {idMachine} cho địa chỉ {address}");
+
+                var now = DateTime.Now;
+
+                // 1. Chuẩn bị giá trị cần lưu
+                var valuesToSave = new Dictionary<string, double?>
+                {
+                    { "A01-前烘箱溫度", GetValueWithAddressSuffix(dataForAddress, "A01-前烘箱溫度", address) },
+                    { "A02-前烘箱溫度", GetValueWithAddressSuffix(dataForAddress, "A02-前烘箱溫度", address) },
+                    { "A03-加硫機溫度", GetValueWithAddressSuffix(dataForAddress, "A03-加硫機溫度", address) },
+                    { "A04-中段烘箱1-上溫度", GetValueWithAddressSuffix(dataForAddress, "A04-中段烘箱1-上溫度", address) },
+                    { "A05-中段烘箱1-下溫度", GetValueWithAddressSuffix(dataForAddress, "A05-中段烘箱1-下溫度", address) },
+                    { "A06-中段烘箱2-上溫度", GetValueWithAddressSuffix(dataForAddress, "A06-中段烘箱2-上溫度", address) },
+                    { "A07-中段烘箱2-下溫度", GetValueWithAddressSuffix(dataForAddress, "A07-中段烘箱2-下溫度", address) },
+                    { "A08-中段烘箱3-上溫度", GetValueWithAddressSuffix(dataForAddress, "A08-中段烘箱3-上溫度", address) }
+                };
+
+                // 2. Lấy danh sách control code theo devid
+                using (var newContext = new MyDbContext())
+                {
+                    var controlCodes = await newContext.controlcodes
+                        .Where(c => c.devid == idMachine)
+                        .ToListAsync();
+
+
+                    int savedCount = 0;
+
+                    foreach (var item in valuesToSave)
+                    {
+                        if (!item.Value.HasValue) continue;
+
+                        var code = controlCodes.FirstOrDefault(c => c.name == item.Key);
+                        if (code != null)
+                        {
+                            var sensorData = new SensorData
+                            {
+                                devid = idMachine,
+                                codeid = code.codeid,
+                                value = item.Value.Value,
+                                day = now
+                            };
+                            //Tool.Log($"→ Đang lưu: devid={sensorData.devid}, codeid={sensorData.codeid}, value={sensorData.value}, day={sensorData.day}");
+
+                            // Gọi và kiểm tra kết quả lưu
+                            bool isSaved = await _toolService.InsertToSensorDataAsync(sensorData);
+                            if (isSaved)
+                            {
+                                savedCount++;
+                            }
+                        }
+                    }
+
+                    // Logging kết quả
+                    if (savedCount == 0)
+                    {
+                        Tool.Log($"⚠ Không có bản ghi nào được lưu vào bảng SensorData cho địa chỉ {address}.");
+                    }
+                    else
+                    {
+                        Tool.Log($"→ Đã lưu {savedCount} bản ghi vào bảng SensorData cho địa chỉ {address}.");
+                    }
+                }
+
             }
             catch (Exception ex)
             {
-                System.Windows.MessageBox.Show($"Errors: {ex.Message}");
-                return;
+                Tool.Log($"Lỗi khi lưu dữ liệu cho địa chỉ {address}: {ex.Message}");
             }
         }
+        private double? GetValueWithAddressSuffix(Dictionary<string, double> data, string key, int address)
+        {
+            string fullKey = $"{key}_Address_{address}";
+            return data.ContainsKey(fullKey) ? data[fullKey] : null;
+        }
+        #endregion
 
 
         #region Language

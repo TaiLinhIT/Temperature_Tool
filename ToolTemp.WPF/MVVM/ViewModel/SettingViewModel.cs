@@ -1,22 +1,15 @@
 ﻿using GalaSoft.MvvmLight.Messaging;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.ChangeTracking.Internal;
-using Microsoft.IdentityModel.Tokens;
 using System.Collections.ObjectModel;
 using System.ComponentModel;
 using System.IO.Ports;
-using System.Reflection.Emit;
-using System.Reflection.PortableExecutable;
 using System.Windows;
 using System.Windows.Controls;
-using System.Windows.Forms.Design;
-using System.Windows.Ink;
 using System.Windows.Input;
 using System.Windows.Media;
 using ToolTemp.WPF.Configs;
-using ToolTemp.WPF.Constants;
 using ToolTemp.WPF.Core;
-using ToolTemp.WPF.Interfaces;
 using ToolTemp.WPF.Models;
 using ToolTemp.WPF.Services;
 using ToolTemp.WPF.Utils;
@@ -28,7 +21,7 @@ using Style = ToolTemp.WPF.Models.Style;
 
 namespace ToolTemp.WPF.MVVM.ViewModel
 {
-    public class SettingViewModel : BaseViewModel, INotifyPropertyChanged , IDataErrorInfo
+    public class SettingViewModel : BaseViewModel, INotifyPropertyChanged, IDataErrorInfo
     {
         private SerialPort _serialPort;
         private string _selectedPort;
@@ -46,8 +39,9 @@ namespace ToolTemp.WPF.MVVM.ViewModel
         public List<string> ListPost
         {
             get => _lstPost;
-            set { 
-         
+            set
+            {
+
                 this._lstPost = value;
                 OnPropertyChanged(nameof(_lstPost));
             }
@@ -273,7 +267,7 @@ namespace ToolTemp.WPF.MVVM.ViewModel
             }
         }
 
-        
+
         public int _demin;
         public int DeMin
         {
@@ -356,7 +350,7 @@ namespace ToolTemp.WPF.MVVM.ViewModel
                         else if (Baudrate != 115200)
                             error = "Baudrate is not correct.";
                         break;
-                    
+
                 }
                 return error;
             }
@@ -385,7 +379,7 @@ namespace ToolTemp.WPF.MVVM.ViewModel
         public ToolViewModel _toolViewModel;
         public AppSettings _appSetting;
         public event PropertyChangedEventHandler PropertyChanged;
-        public event Action<Button,Button> NewButtonCreated;
+        public event Action<Button, Button> NewButtonCreated;
 
         private string _textBoxContent;
         public string TextBoxContent
@@ -631,7 +625,7 @@ namespace ToolTemp.WPF.MVVM.ViewModel
                 });
             }
 
-            
+
 
             //Buttons
             ConnectCommand = new RelayCommand(ExecuteConnectCommand, CanConnect);
@@ -647,9 +641,9 @@ namespace ToolTemp.WPF.MVVM.ViewModel
 
             ButtonList = new ObservableCollection<Button>();
 
-            
-           
-            
+
+
+
 
             //OpenViewMainCommand = new RelayCommand(OpenViewMain);
             GetPorts();
@@ -658,7 +652,7 @@ namespace ToolTemp.WPF.MVVM.ViewModel
 
             LoadButtonsAsync();
 
-            
+
 
             GetPortName();
 
@@ -670,13 +664,14 @@ namespace ToolTemp.WPF.MVVM.ViewModel
             _toolViewModel.GiayMin = 60;
             _toolViewModel.idStyle = 2;
             _toolViewModel.NameStyle = "Decker";
-            _toolViewModel.Start();
-            for (int i = 1; i <= 6; i++)
-            {
-                _toolViewModel.SetFactory("VB2", i);
-                _toolViewModel.GetTempFromMachine(i, i); // Truyền thêm IdMachine
 
-            }
+            _toolViewModel.Start();
+            //for (int i = 1; i <= 6; i++)
+            //{
+            //    _toolViewModel.SetFactory("VB2", i);
+            //    _toolViewModel.GetTempFromMachine(i, i); // Truyền thêm IdMachine
+
+            //}
 
         }
 
@@ -702,7 +697,7 @@ namespace ToolTemp.WPF.MVVM.ViewModel
                     Background = new SolidColorBrush(Colors.LightGreen)
                 };
 
-                
+
             }
         }
 
@@ -711,7 +706,7 @@ namespace ToolTemp.WPF.MVVM.ViewModel
         {
             Port = message.Port;
             Baudrate = message.Baudrate;
-            DeMax = Convert.ToInt32(message.DeMax) ;
+            DeMax = Convert.ToInt32(message.DeMax);
             DeMin = Convert.ToInt32(message.DeMin);
             NameStyle = message.NameStyle;
         }
@@ -756,7 +751,7 @@ namespace ToolTemp.WPF.MVVM.ViewModel
             }
         }
 
-        
+
 
         // Phương thức để thêm button mới vào danh sách
         private async void AddButton(object parameter)
@@ -820,7 +815,7 @@ namespace ToolTemp.WPF.MVVM.ViewModel
                 // Cast sender to Button
                 Button clickedButton = (Button)sender;
 
-                
+
 
                 // Retrieve the Style object from DataContext
                 if (clickedButton.DataContext is Style style)
@@ -831,7 +826,7 @@ namespace ToolTemp.WPF.MVVM.ViewModel
                     message.DeMin = style.DeMin;
                     message.GiayMax = style.GiayMax;
                     message.GiayMin = style.GiayMin;
-                    
+
                     Messenger.Default.Send(message, "DeviceConfigMessage");
                     _toolViewModel.DeMax = Convert.ToInt32(style.DeMax);
                     _toolViewModel.DeMin = Convert.ToInt32(style.DeMin);
@@ -847,7 +842,7 @@ namespace ToolTemp.WPF.MVVM.ViewModel
                     GiayMin = Convert.ToInt32(style.GiayMin);
                     IsEnabledBtnAddStyle = false;
                     IsEnabledBtnDelete = true;
-                    
+
                     //_toolViewModel.Start();
                 }
                 else
@@ -922,23 +917,23 @@ namespace ToolTemp.WPF.MVVM.ViewModel
 
         public async void ExecuteConnectCommand(object parameter)
         {
-            
+
 
             try
             {
                 //message.Port = this.Port;
                 //message.Baudrate = this.Baudrate;
 
-                
+
 
                 Messenger.Default.Send(message, "DeviceConfigMessage");
                 // set port for _toolViewModel
-                
-                
+
+
                 _toolViewModel.Start();
                 IsEnabledBtnConnect = false;
                 //MessageBox.Show("Connection successful!");
-                
+
 
 
             }
@@ -958,9 +953,9 @@ namespace ToolTemp.WPF.MVVM.ViewModel
         {
             try
             {
-                
+
                 _toolViewModel.Close();
-                
+
                 IsEnabledBtnConnect = true;
                 MessageBox.Show("Disconnected !");
             }
@@ -977,7 +972,7 @@ namespace ToolTemp.WPF.MVVM.ViewModel
         }
 
 
-        private void ExecuteDeleteCommand (object parameter)
+        private void ExecuteDeleteCommand(object parameter)
         {
             try
             {
@@ -992,7 +987,7 @@ namespace ToolTemp.WPF.MVVM.ViewModel
             {
 
                 Tool.Log($"Errors delete: {ex.Message}");
-                
+
             }
         }
         private bool CanDeleteCommand(object parameter)
@@ -1084,7 +1079,7 @@ namespace ToolTemp.WPF.MVVM.ViewModel
                 }
 
                 //Tìm máy trong cơ sở dữ liệu
-               var find = await _context.machines.FirstOrDefaultAsync(x => x.Id == SelectedMachine.Id);
+                var find = await _context.machines.FirstOrDefaultAsync(x => x.Id == SelectedMachine.Id);
 
                 if (find == null)
                 {
@@ -1147,7 +1142,7 @@ namespace ToolTemp.WPF.MVVM.ViewModel
                 }
 
                 //Tìm máy trong cơ sở dữ liệu
-               var find = await _context.machines.FirstOrDefaultAsync(x => x.Id == SelectedMachine.Id);
+                var find = await _context.machines.FirstOrDefaultAsync(x => x.Id == SelectedMachine.Id);
 
                 if (find == null)
                 {

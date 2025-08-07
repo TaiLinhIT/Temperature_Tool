@@ -1,22 +1,23 @@
-﻿using GalaSoft.MvvmLight.Messaging;
-using Microsoft.Data.SqlClient;
+﻿using Microsoft.Data.SqlClient;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.Options;
+using Microsoft.Extensions.DependencyInjection;
 using System.Windows.Forms;
 using ToolTemp.WPF.Interfaces;
 using ToolTemp.WPF.Models;
 using ToolTemp.WPF.Utils;
-using static Microsoft.EntityFrameworkCore.DbLoggerCategory.Database;
 
 namespace ToolTemp.WPF.Services
 {
 
-    public class ToolService: IToolService
+    public class ToolService : IToolService
     {
         private readonly MyDbContext _context;
-        public ToolService(MyDbContext myDbContext)
+        private readonly IServiceScopeFactory _scopeFactory;
+
+        public ToolService(MyDbContext myDbContext, IServiceScopeFactory serviceScope)
         {
             _context = myDbContext;
+            _scopeFactory = serviceScope;
         }
 
         public async Task<bool> InsertToStyle(Style model)
@@ -25,7 +26,7 @@ namespace ToolTemp.WPF.Services
             {
                 await _context.Style.AddAsync(model);
                 await _context.SaveChangesAsync();
-                
+
 
                 return true; // Trả về 1 nếu thêm dữ liệu thành công
             }
@@ -33,6 +34,38 @@ namespace ToolTemp.WPF.Services
             {
                 Tool.Log(ex.Message);
                 return false;
+            }
+        }
+        private static readonly SemaphoreSlim _semaphore = new SemaphoreSlim(1, 1);
+
+        public async Task<bool> InsertToSensorDataAsync(SensorData data)
+        {
+            using (var scope = _scopeFactory.CreateScope())
+            {
+                var dbContext = scope.ServiceProvider.GetRequiredService<MyDbContext>();
+                await _semaphore.WaitAsync();
+
+                try
+                {
+                    await dbContext.sensorDatas.AddAsync(data);
+                    var result = await dbContext.SaveChangesAsync();
+
+                    Tool.Log($"→ SaveChangesAsync: {result} record(s) affected for codeid {data.codeid}");
+                    return result > 0;
+                }
+                catch (Exception ex)
+                {
+                    Tool.Log($"Lỗi khi lưu SensorData (codeid {data.codeid}): {ex.Message}");
+                    if (ex.InnerException != null)
+                    {
+                        Tool.Log($"→ Chi tiết lỗi bên trong: {ex.InnerException.Message}");
+                    }
+                    return false;
+                }
+                finally
+                {
+                    _semaphore.Release();
+                }
             }
         }
 
@@ -131,7 +164,7 @@ namespace ToolTemp.WPF.Services
             try
             {
                 var result = _context.Style.FromSqlRaw("EXEC GetListStyle").ToList();
-               
+
                 return result;
             }
             catch (Exception ex)
@@ -144,7 +177,7 @@ namespace ToolTemp.WPF.Services
         {
             try
             {
-                Style find =  _context.Style.Where(x => x.NameStyle == name).FirstOrDefault();
+                Style find = _context.Style.Where(x => x.NameStyle == name).FirstOrDefault();
                 _context.Style.Remove(find);
                 _context.SaveChanges();
                 return true;
@@ -277,6 +310,26 @@ namespace ToolTemp.WPF.Services
             }
 
 
+        }
+        public string ConvertToHex(int number)
+        {
+            return number.ToString("X");
+        }
+        public byte[] ConvertHexStringToByteArray(string hexString)
+        {
+            hexString = hexString.Replace(" ", "").ToUpper(); // Chuẩn hóa chuỗi
+            if (hexString.Length % 2 != 0 || !System.Text.RegularExpressions.Regex.IsMatch(hexString, "^[0-9A-F]+$"))
+            {
+                throw new FormatException("Invalid hex string.");
+            }
+
+            int numberOfBytes = hexString.Length / 2;
+            byte[] bytes = new byte[numberOfBytes];
+            for (int i = 0; i < numberOfBytes; i++)
+            {
+                bytes[i] = Convert.ToByte(hexString.Substring(i * 2, 2), 16);
+            }
+            return bytes;
         }
     }
 }

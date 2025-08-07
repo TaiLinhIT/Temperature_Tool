@@ -22,6 +22,23 @@ namespace ToolTemp.WPF.Migrations
 
             SqlServerModelBuilderExtensions.UseIdentityColumns(modelBuilder);
 
+            modelBuilder.Entity("ToolTemp.WPF.Models.ActiveType", b =>
+                {
+                    b.Property<int>("activeid")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("activeid"));
+
+                    b.Property<string>("name")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.HasKey("activeid");
+
+                    b.ToTable("ActiveType");
+                });
+
             modelBuilder.Entity("ToolTemp.WPF.Models.BusDataTemp", b =>
                 {
                     b.Property<int>("Id")
@@ -37,14 +54,10 @@ namespace ToolTemp.WPF.Migrations
                         .HasColumnType("int");
 
                     b.Property<string>("Channel")
-                        .IsRequired()
-                        .HasMaxLength(50)
-                        .HasColumnType("nvarchar(50)");
+                        .HasColumnType("nvarchar(max)");
 
                     b.Property<string>("Factory")
-                        .IsRequired()
-                        .HasMaxLength(100)
-                        .HasColumnType("nvarchar(100)");
+                        .HasColumnType("nvarchar(max)");
 
                     b.Property<int?>("IdMachine")
                         .HasColumnType("int");
@@ -56,9 +69,7 @@ namespace ToolTemp.WPF.Migrations
                         .HasColumnType("bit");
 
                     b.Property<string>("Line")
-                        .IsRequired()
-                        .HasMaxLength(100)
-                        .HasColumnType("nvarchar(100)");
+                        .HasColumnType("nvarchar(max)");
 
                     b.Property<string>("LineCode")
                         .HasColumnType("nvarchar(max)");
@@ -70,21 +81,16 @@ namespace ToolTemp.WPF.Migrations
                         .HasColumnType("int");
 
                     b.Property<string>("Port")
-                        .IsRequired()
-                        .HasMaxLength(50)
-                        .HasColumnType("nvarchar(50)");
+                        .HasColumnType("nvarchar(max)");
 
                     b.Property<int?>("Sensor_Typeid")
-                        .IsRequired()
                         .HasColumnType("int");
 
                     b.Property<string>("Sensor_ant")
-                        .HasMaxLength(63)
-                        .HasColumnType("nvarchar(63)");
+                        .HasColumnType("nvarchar(max)");
 
                     b.Property<string>("Sensor_kind")
-                        .HasMaxLength(63)
-                        .HasColumnType("nvarchar(63)");
+                        .HasColumnType("nvarchar(max)");
 
                     b.Property<double>("Temp")
                         .HasColumnType("float");
@@ -94,30 +100,76 @@ namespace ToolTemp.WPF.Migrations
 
                     b.HasKey("Id");
 
-                    b.ToTable("dv_BusDataTemp", (string)null);
+                    b.ToTable("dv_BusDataTemp");
+                });
+
+            modelBuilder.Entity("ToolTemp.WPF.Models.Controlcode", b =>
+                {
+                    b.Property<int>("codeid")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("codeid"));
+
+                    b.Property<int>("activeid")
+                        .HasColumnType("int");
+
+                    b.Property<string>("code")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("codetypeid")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<int>("devid")
+                        .HasColumnType("int");
+
+                    b.Property<double>("factor")
+                        .HasColumnType("float");
+
+                    b.Property<decimal?>("high")
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<int?>("ifcal")
+                        .HasColumnType("int");
+
+                    b.Property<int?>("ifshow")
+                        .HasColumnType("int");
+
+                    b.Property<decimal?>("low")
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<string>("name")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<int?>("typeid")
+                        .HasColumnType("int");
+
+                    b.HasKey("codeid");
+
+                    b.ToTable("controlcode");
                 });
 
             modelBuilder.Entity("ToolTemp.WPF.Models.Device", b =>
                 {
                     b.Property<string>("DevId")
-                        .HasMaxLength(20)
-                        .HasColumnType("nvarchar(20)")
-                        .HasColumnName("devid");
+                        .HasColumnType("nvarchar(450)");
 
                     b.Property<int>("ActiveId")
                         .HasColumnType("int");
 
                     b.Property<string>("Name")
                         .IsRequired()
-                        .HasMaxLength(20)
-                        .HasColumnType("nvarchar(20)");
+                        .HasColumnType("nvarchar(max)");
 
                     b.Property<int>("TypeId")
                         .HasColumnType("int");
 
                     b.HasKey("DevId");
 
-                    b.ToTable("devices", (string)null);
+                    b.ToTable("devices");
                 });
 
             modelBuilder.Entity("ToolTemp.WPF.Models.DvFactoryAssembling", b =>
@@ -152,17 +204,15 @@ namespace ToolTemp.WPF.Migrations
 
                     b.Property<string>("FactoryCode")
                         .IsRequired()
-                        .HasMaxLength(50)
-                        .HasColumnType("nvarchar(50)");
+                        .HasColumnType("nvarchar(max)");
 
                     b.Property<string>("Line")
                         .IsRequired()
-                        .HasMaxLength(100)
-                        .HasColumnType("nvarchar(100)");
+                        .HasColumnType("nvarchar(max)");
 
                     b.HasKey("Id");
 
-                    b.ToTable("dv_Factory_Configs", (string)null);
+                    b.ToTable("dv_Factory_Configs");
                 });
 
             modelBuilder.Entity("ToolTemp.WPF.Models.Machine", b =>
@@ -200,6 +250,31 @@ namespace ToolTemp.WPF.Migrations
                     b.ToTable("dv_Machine_Temp");
                 });
 
+            modelBuilder.Entity("ToolTemp.WPF.Models.SensorData", b =>
+                {
+                    b.Property<int>("logid")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("logid"));
+
+                    b.Property<int>("codeid")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime>("day")
+                        .HasColumnType("datetime2");
+
+                    b.Property<int>("devid")
+                        .HasColumnType("int");
+
+                    b.Property<double>("value")
+                        .HasColumnType("float");
+
+                    b.HasKey("logid");
+
+                    b.ToTable("SensorData");
+                });
+
             modelBuilder.Entity("ToolTemp.WPF.Models.Style", b =>
                 {
                     b.Property<int>("Id")
@@ -209,42 +284,38 @@ namespace ToolTemp.WPF.Migrations
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
 
                     b.Property<decimal?>("CompensateVaild")
-                        .HasColumnType("decimal(18,6)")
+                        .HasColumnType("decimal(18,2)")
                         .HasColumnName("Compensate_Vaild");
 
                     b.Property<decimal>("DeMax")
-                        .HasColumnType("decimal(18,6)")
+                        .HasColumnType("decimal(18,2)")
                         .HasColumnName("SoleMax");
 
                     b.Property<decimal>("DeMin")
-                        .HasColumnType("decimal(18,6)")
+                        .HasColumnType("decimal(18,2)")
                         .HasColumnName("SoleMin");
 
                     b.Property<string>("Devid")
-                        .HasMaxLength(255)
-                        .HasColumnType("nvarchar(255)");
+                        .HasColumnType("nvarchar(max)");
 
                     b.Property<decimal>("GiayMax")
-                        .HasColumnType("decimal(18,6)")
+                        .HasColumnType("decimal(18,2)")
                         .HasColumnName("ShoesMax");
 
                     b.Property<decimal>("GiayMin")
-                        .HasColumnType("decimal(18,6)")
+                        .HasColumnType("decimal(18,2)")
                         .HasColumnName("ShoesMin");
 
                     b.Property<string>("NameStyle")
-                        .IsRequired()
-                        .HasMaxLength(50)
-                        .HasColumnType("nvarchar(50)");
+                        .HasColumnType("nvarchar(max)");
 
                     b.Property<string>("StandardTemp")
-                        .HasMaxLength(255)
-                        .HasColumnType("nvarchar(255)")
+                        .HasColumnType("nvarchar(max)")
                         .HasColumnName("Standard_temp");
 
                     b.HasKey("Id");
 
-                    b.ToTable("dv_style", (string)null);
+                    b.ToTable("dv_style");
                 });
 #pragma warning restore 612, 618
         }

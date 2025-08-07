@@ -1,10 +1,5 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Diagnostics;
+﻿using System.Diagnostics;
 using System.IO.Ports;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 using ToolTemp.WPF.Configs;
 using ToolTemp.WPF.Utils;
 
@@ -46,7 +41,7 @@ namespace ToolTemp.WPF.Services
             try
             {
                 _serialPort.Open();
-                
+
             }
             catch (Exception e)
             {
@@ -104,33 +99,42 @@ namespace ToolTemp.WPF.Services
             _serialPort.Close();
         }
 
-        public void Write(string str)
+        public void Write(string hexData)
         {
             try
             {
-                byte[] data = new byte[1];    //发送数据字符数组，每次发送一个字节的数据
-                string strs = str;     //剔除字符串中的空格和回车
-                                       //如果字符串的个数为单数，在最后一位前补0
+                // Gửi requestName trước
+                //byte[] requestNameBytes = Encoding.ASCII.GetBytes(requestName);
+                //_serialPort.Write(requestNameBytes, 0, requestNameBytes.Length);
+
+                // Tách dữ liệu hex và gửi từng byte
+                byte[] data = new byte[1];
+                string strs = hexData.Replace(" ", "").Replace("\r", "").Replace("\n", "");
+
                 if (strs.Length % 2 == 1)
                 {
                     strs = strs.Insert(strs.Length - 1, "0");
                 }
-                //将字符串中两个字符组成一个8进制数，循环次数为字符串长度的一半
+
+                foreach (char c in strs)
+                {
+                    if (!Uri.IsHexDigit(c))
+                    {
+                        throw new FormatException($"Ký tự không hợp lệ trong chuỗi hex: {c}");
+                    }
+                }
+
                 for (int i = 0; i < strs.Length / 2; i++)
                 {
-                    //将两位字符转换成一位16进制数
                     data[0] = Convert.ToByte(strs.Substring(i * 2, 2), 16);
-                    //将发送数据字符数组的数据发送
                     _serialPort.Write(data, 0, 1);
                 }
-                //_serialPort.WriteLine(str);
             }
-            catch (Exception)
+            catch (Exception ex)
             {
-
+                Console.WriteLine($"Lỗi: {ex.Message}");
                 throw;
             }
-            
         }
         public bool IsOpen()
         {
